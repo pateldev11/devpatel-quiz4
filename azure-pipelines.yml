@@ -5,18 +5,18 @@ trigger:
 
 variables:
   buildConfiguration: 'Release'
-  sonarProjectKey: 'your_project_key'           # Example: myorg_myproject
-  sonarProjectName: 'YourProjectName'           # Example: MyProject
-  sonarOrganization: 'your_org'                 # Only used for SonarCloud
+  sonarProjectKey: 'dpat1072_devpatel-lab4-q2'        # <-- Replace with your actual SonarQube project key
+  sonarProjectName: 'devpatel-lab4-q2'        # <-- Replace with your actual project name
 
 stages:
-# ------------------------------
+# ------------------------------------
 # Stage 1: Build Stage
-# ------------------------------
+# ------------------------------------
 - stage: Build
   displayName: 'Build Stage'
   jobs:
     - job: BuildJob
+      displayName: 'Build and Compile App'
       pool:
         vmImage: 'ubuntu-latest'
       steps:
@@ -25,28 +25,29 @@ stages:
         - task: NodeTool@0
           inputs:
             versionSpec: '18.x'
-          displayName: 'Use Node.js'
+          displayName: 'Use Node.js 18'
 
         - script: |
             npm install
             npm run build
           displayName: 'Install Dependencies and Build Project'
 
-# ------------------------------
-# Stage 2: SonarQube Analysis
-# ------------------------------
+# ------------------------------------
+# Stage 2: SonarQube Code Analysis
+# ------------------------------------
 - stage: SonarQube
   displayName: 'Code Analysis Stage'
   dependsOn: Build
   condition: succeeded()
   jobs:
     - job: SonarQubeJob
+      displayName: 'SonarQube Analysis Job'
       pool:
         vmImage: 'ubuntu-latest'
       steps:
         - task: SonarQubePrepare@5
           inputs:
-            SonarQube: 'SonarQubeServiceConnection'   # Must match your Azure DevOps service connection
+            SonarQube: 'SonarQubeServiceConnection'  # This must match the name of your Azure DevOps service connection
             scannerMode: 'CLI'
             configMode: 'manual'
             cliProjectKey: '$(sonarProjectKey)'
@@ -68,15 +69,16 @@ stages:
             pollingTimeoutSec: '300'
           displayName: 'Publish SonarQube Results'
 
-# ------------------------------
-# Stage 3: Artifact Generation
-# ------------------------------
+# ------------------------------------
+# Stage 3: Create Artifact
+# ------------------------------------
 - stage: Package
-  displayName: 'Artifact Generation'
+  displayName: 'Artifact Generation Stage'
   dependsOn: SonarQube
   condition: succeeded()
   jobs:
     - job: PackageJob
+      displayName: 'Package Build Output'
       pool:
         vmImage: 'ubuntu-latest'
       steps:
@@ -84,7 +86,7 @@ stages:
           inputs:
             contents: '**/build/**'
             targetFolder: '$(Build.ArtifactStagingDirectory)'
-          displayName: 'Copy Files to Artifact Staging'
+          displayName: 'Copy Build Folder to Artifact Staging'
 
         - task: PublishBuildArtifacts@1
           inputs:
@@ -93,11 +95,11 @@ stages:
             publishLocation: 'Container'
           displayName: 'Publish Artifact'
 
-# ------------------------------
-# Stage 4: Deploy to Dev
-# ------------------------------
+# ------------------------------------
+# Stage 4: Deploy to Development
+# ------------------------------------
 - stage: DeployDev
-  displayName: 'Deploy to Development'
+  displayName: 'Deploy to Development Environment'
   dependsOn: Package
   condition: succeeded()
   jobs:
@@ -111,13 +113,13 @@ stages:
                 artifact: drop
 
               - script: |
-                  echo "Deploying to Development on Port 3000"
+                  echo "Deploying to Development Environment"
                   ls $(Pipeline.Workspace)/drop/build
-                displayName: 'Mock Deployment for Dev'
+                displayName: 'Mock Dev Deployment'
 
-# ------------------------------
+# ------------------------------------
 # Stage 5: Deploy to QAT
-# ------------------------------
+# ------------------------------------
 - stage: DeployQAT
   displayName: 'Deploy to QAT Environment'
   dependsOn: DeployDev
@@ -133,12 +135,13 @@ stages:
                 artifact: drop
 
               - script: |
-                  echo "Mock deploy to QAT environment"
+                  echo "Deploying to QAT Environment"
+                  ls $(Pipeline.Workspace)/drop/build
                 displayName: 'Mock QAT Deployment'
 
-# ------------------------------
+# ------------------------------------
 # Stage 6: Deploy to Staging
-# ------------------------------
+# ------------------------------------
 - stage: DeployStaging
   displayName: 'Deploy to Staging Environment'
   dependsOn: DeployQAT
@@ -154,12 +157,13 @@ stages:
                 artifact: drop
 
               - script: |
-                  echo "Mock deploy to Staging environment"
+                  echo "Deploying to Staging Environment"
+                  ls $(Pipeline.Workspace)/drop/build
                 displayName: 'Mock Staging Deployment'
 
-# ------------------------------
+# ------------------------------------
 # Stage 7: Deploy to Production
-# ------------------------------
+# ------------------------------------
 - stage: DeployProd
   displayName: 'Deploy to Production Environment'
   dependsOn: DeployStaging
@@ -175,5 +179,6 @@ stages:
                 artifact: drop
 
               - script: |
-                  echo "Mock deploy to Production environment"
+                  echo "Deploying to Production Environment"
+                  ls $(Pipeline.Workspace)/drop/build
                 displayName: 'Mock Production Deployment'
