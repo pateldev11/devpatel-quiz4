@@ -129,12 +129,8 @@ stages:
         runOnce:
           deploy:
             steps:
-              - download: current
-                artifact: drop
-
               - script: |
-                  echo "Deploying to QAT Environment"
-                  ls $(Pipeline.Workspace)/drop/build
+                  echo "Mock deploy to QAT environment"
                 displayName: 'Mock QAT Deployment'
 
 # ------------------------------
@@ -151,12 +147,8 @@ stages:
         runOnce:
           deploy:
             steps:
-              - download: current
-                artifact: drop
-
               - script: |
-                  echo "Deploying to Staging Environment"
-                  ls $(Pipeline.Workspace)/drop/build
+                  echo "Mock deploy to Staging environment"
                 displayName: 'Mock Staging Deployment'
 
 # ------------------------------
@@ -173,10 +165,6 @@ stages:
         runOnce:
           deploy:
             steps:
-              - download: current
-                artifact: drop
-
               - script: |
-                  echo "Deploying to Production Environment"
-                  ls $(Pipeline.Workspace)/drop/build
+                  echo "Mock deploy to Production environment"
                 displayName: 'Mock Production Deployment'
