@@ -5,9 +5,9 @@ trigger:
 
 variables:
   buildConfiguration: 'Release'
-  sonarProjectKey: 'your_project_key'
-  sonarProjectName: 'YourProjectName'
-  sonarOrganization: 'your_org'
+  sonarProjectKey: 'your_project_key'           # Example: myorg_myproject
+  sonarProjectName: 'YourProjectName'           # Example: MyProject
+  sonarOrganization: 'your_org'                 # Only used for SonarCloud
 
 stages:
 # ------------------------------
@@ -46,7 +46,7 @@ stages:
       steps:
         - task: SonarQubePrepare@5
           inputs:
-            SonarQube: 'SonarQubeServiceConnection'
+            SonarQube: 'SonarQubeServiceConnection'   # Must match your Azure DevOps service connection
             scannerMode: 'CLI'
             configMode: 'manual'
             cliProjectKey: '$(sonarProjectKey)'
@@ -129,6 +129,9 @@ stages:
         runOnce:
           deploy:
             steps:
+              - download: current
+                artifact: drop
+
               - script: |
                   echo "Mock deploy to QAT environment"
                 displayName: 'Mock QAT Deployment'
@@ -147,6 +150,9 @@ stages:
         runOnce:
           deploy:
             steps:
+              - download: current
+                artifact: drop
+
               - script: |
                   echo "Mock deploy to Staging environment"
                 displayName: 'Mock Staging Deployment'
@@ -165,6 +171,9 @@ stages:
         runOnce:
           deploy:
             steps:
+              - download: current
+                artifact: drop
+
               - script: |
                   echo "Mock deploy to Production environment"
                 displayName: 'Mock Production Deployment'
