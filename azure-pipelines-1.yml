@@ -5,163 +5,63 @@ trigger:
 
 variables:
   buildConfiguration: 'Release'
-  sonarProjectKey: 'your_project_key'
-  sonarProjectName: 'YourProjectName'
-  sonarOrganization: 'your_org'
 
-stages:
-# ------------------------------
-# Stage 1: Build Stage
-# ------------------------------
-- stage: Build
-  displayName: 'Build Stage'
-  jobs:
-    - job: BuildJob
-      pool:
-        vmImage: 'ubuntu-latest'
-      steps:
-        - checkout: self
+pool:
+  vmImage: 'windows-latest'
 
-        - task: NodeTool@0
-          inputs:
-            versionSpec: '18.x'
-          displayName: 'Use Node.js'
+steps:
 
-# ------------------------------
-# Stage 2: SonarQube Analysis
-# ------------------------------
-- stage: SonarQube
-  displayName: 'Code Analysis Stage'
-  dependsOn: Build
-  condition: succeeded()
-  jobs:
-    - job: SonarQubeJob
-      pool:
-        vmImage: 'ubuntu-latest'
-      steps:
-        - task: SonarQubePrepare@5
-          inputs:
-            SonarQube: 'SonarQubeServiceConnection'
-            scannerMode: 'CLI'
-            configMode: 'manual'
-            cliProjectKey: '$(sonarProjectKey)'
-            cliProjectName: '$(sonarProjectName)'
-            extraProperties: |
-              sonar.sources=.
-              sonar.javascript.lcov.reportPaths=coverage/lcov.info
+- task: Checkout@1
 
-        - script: |
-            echo "Listing files in frontend folder"
-            ls -al
-            npm install
-            npm run test -- --coverage
-          workingDirectory: frontend
-          displayName: 'Run Unit Tests and Generate Coverage Report'
+- task: UseDotNet@2
+  inputs:
+    packageType: 'sdk'
+    version: '7.x'
+    installationPath: $(Agent.ToolsDirectory)/dotnet
 
-        - task: SonarQubeAnalyze@5
-          displayName: 'Run SonarQube Analysis'
+# 🔧 Restore project
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'restore'
+    projects: '**/*.csproj'
 
-        - task: SonarQubePublish@5
-          inputs:
-            pollingTimeoutSec: '300'
-          displayName: 'Publish SonarQube Results'
+# 🔨 Build project
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+    projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
 
-# ------------------------------
-# Stage 3: Artifact Generation
-# ------------------------------
-- stage: Package
-  displayName: 'Artifact Generation'
-  dependsOn: SonarQube
-  condition: succeeded()
-  jobs:
-    - job: PackageJob
-      pool:
-        vmImage: 'ubuntu-latest'
-      steps:
-        - task: CopyFiles@2
-          inputs:
-            contents: '**/build/**'
-            targetFolder: '$(Build.ArtifactStagingDirectory)'
-          displayName: 'Copy Files to Artifact Staging'
+# 🧪 Run tests with code coverage
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'test'
+    projects: '**/*Tests.csproj'
+    arguments: '--configuration $(buildConfiguration) --collect:"Code Coverage"'
 
-        - task: PublishBuildArtifacts@1
-          inputs:
-            PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-            ArtifactName: 'drop'
-            publishLocation: 'Container'
-          displayName: 'Publish Artifact'
+# 📦 Publish build output
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'publish'
+    projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
 
-# ------------------------------
-# Stage 4–7: Deployments
-# ------------------------------
-- stage: DeployDev
-  displayName: 'Deploy to Development'
-  dependsOn: Package
-  condition: succeeded()
-  jobs:
-    - deployment: DevDeploy
-      environment: 'dev'
-      strategy:
-        runOnce:
-          deploy:
-            steps:
-              - download: current
-                artifact: drop
-              - script: |
-                  echo "Deploying to Development on Port 3000"
-                  ls $(Pipeline.Workspace)/drop/build
-                displayName: 'Mock Deployment for Dev'
+# 🚚 Upload artifact
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
 
-- stage: DeployQAT
+# 🧪 Deploy to mocked environments
+- script: echo "✅ Deploying to Dev Environment on port 5000"
+  displayName: 'Deploy to Dev Environment'
+
+- script: echo "✅ Deploying to QAT Environment"
   displayName: 'Deploy to QAT Environment'
-  dependsOn: DeployDev
-  condition: succeeded()
-  jobs:
-    - deployment: QATDeploy
-      environment: 'qat'
-      strategy:
-        runOnce:
-          deploy:
-            steps:
-              - download: current
-                artifact: drop
-              - script: |
-                  echo "Deploying to QAT Environment"
-                  ls $(Pipeline.Workspace)/drop/build
-                displayName: 'Mock QAT Deployment'
 
-- stage: DeployStaging
+- script: echo "✅ Deploying to Staging Environment"
   displayName: 'Deploy to Staging Environment'
-  dependsOn: DeployQAT
-  condition: succeeded()
-  jobs:
-    - deployment: StagingDeploy
-      environment: 'staging'
-      strategy:
-        runOnce:
-          deploy:
-            steps:
-              - download: current
-                artifact: drop
-              - script: |
-                  echo "Deploying to Staging Environment"
-                  ls $(Pipeline.Workspace)/drop/build
-                displayName: 'Mock Staging Deployment'
 
-- stage: DeployProd
+- script: echo "✅ Deploying to Production Environment"
   displayName: 'Deploy to Production Environment'
-  dependsOn: DeployStaging
-  condition: succeeded()
-  jobs:
-    - deployment: ProdDeploy
-      environment: 'production'
-      strategy:
-        runOnce:
-          deploy:
-            steps:
-              - download: current
-                artifact: drop
-              - script: |
-                  echo "Deploying to Production Environment"
-                  ls $(Pipeline.Workspace)/drop/build
-                displayName: 'Mock Production Deployment'
