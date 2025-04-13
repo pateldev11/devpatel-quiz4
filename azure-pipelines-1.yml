@@ -27,8 +27,6 @@ stages:
             versionSpec: '18.x'
           displayName: 'Use Node.js'
 
-        
-
 # ------------------------------
 # Stage 2: SonarQube Analysis
 # ------------------------------
@@ -53,8 +51,11 @@ stages:
               sonar.javascript.lcov.reportPaths=coverage/lcov.info
 
         - script: |
+            echo "Listing files in frontend folder"
+            ls -al
             npm install
             npm run test -- --coverage
+          workingDirectory: frontend
           displayName: 'Run Unit Tests and Generate Coverage Report'
 
         - task: SonarQubeAnalyze@5
@@ -91,7 +92,7 @@ stages:
           displayName: 'Publish Artifact'
 
 # ------------------------------
-# Stage 4: Deploy to Dev
+# Stage 4–7: Deployments
 # ------------------------------
 - stage: DeployDev
   displayName: 'Deploy to Development'
@@ -106,15 +107,11 @@ stages:
             steps:
               - download: current
                 artifact: drop
-
               - script: |
                   echo "Deploying to Development on Port 3000"
                   ls $(Pipeline.Workspace)/drop/build
                 displayName: 'Mock Deployment for Dev'
 
-# ------------------------------
-# Stage 5: Deploy to QAT
-# ------------------------------
 - stage: DeployQAT
   displayName: 'Deploy to QAT Environment'
   dependsOn: DeployDev
@@ -128,15 +125,11 @@ stages:
             steps:
               - download: current
                 artifact: drop
-
               - script: |
                   echo "Deploying to QAT Environment"
                   ls $(Pipeline.Workspace)/drop/build
                 displayName: 'Mock QAT Deployment'
 
-# ------------------------------
-# Stage 6: Deploy to Staging
-# ------------------------------
 - stage: DeployStaging
   displayName: 'Deploy to Staging Environment'
   dependsOn: DeployQAT
@@ -150,15 +143,11 @@ stages:
             steps:
               - download: current
                 artifact: drop
-
               - script: |
                   echo "Deploying to Staging Environment"
                   ls $(Pipeline.Workspace)/drop/build
                 displayName: 'Mock Staging Deployment'
 
-# ------------------------------
-# Stage 7: Deploy to Production
-# ------------------------------
 - stage: DeployProd
   displayName: 'Deploy to Production Environment'
   dependsOn: DeployStaging
@@ -172,7 +161,6 @@ stages:
             steps:
               - download: current
                 artifact: drop
-
               - script: |
                   echo "Deploying to Production Environment"
                   ls $(Pipeline.Workspace)/drop/build
